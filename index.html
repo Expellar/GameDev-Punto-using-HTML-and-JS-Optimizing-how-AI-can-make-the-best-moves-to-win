@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Punto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --player-color: #3b82f6;
+            --ai-color: #ef4444;
+            --neutral-color: #f59e0b;
+            --ai2-color: #10b981;
+            --ai3-color: #6366f1;
+            --card-back-color: #6b7280;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937;
+            color: #d1d5db;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            max-width: 1200px;
+            background-color: #374151;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+            padding: 16px;
+            gap: 16px;
+        }
+
+        .game-controls {
+            flex: 0 0 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            background-color: #1f2937;
+            padding: 24px;
+            border-radius: 8px;
+            height: 100%;
+        }
+
+        .game-board-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f3f4f6;
+            text-align: center;
+        }
+        
+        .message {
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-align: center;
+            height: 1.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .game-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .game-middle-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 2px;
+            aspect-ratio: 1 / 1;
+            max-width: 600px;
+            width: 100%;
+            background-color: #1f2937;
+            padding: 4px;
+            border-radius: 12px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-slot {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2px;
+            border: 1px dashed #4b5563;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .card-slot.occupied {
+            border-color: transparent;
+        }
+
+        .card-slot:not(.occupied):hover {
+            background-color: rgba(107, 114, 128, 0.2);
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+        }
+
+        .card-player { background-color: var(--player-color); color: white; }
+        .card-ai { background-color: var(--ai-color); color: white; }
+        .card-neutral { background-color: var(--neutral-color); color: white; }
+        .card-ai2 { background-color: var(--ai2-color); color: white; }
+        .card-ai3 { background-color: var(--ai3-color); color: white; }
+
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .card:hover .card-overlay { opacity: 1; }
+
+        .card-value-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .card-dots {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            display: grid;
+            gap: 4px;
+        }
+
+        .dot {
+            background-color: white;
+            border-radius: 50%;
+        }
+        
+        .dots-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+        .dots-1 .dot:nth-child(1) { grid-row: 1; grid-column: 1; align-self: center; justify-self: center; }
+        .dots-2, .dots-3, .dots-4, .dots-5, .dots-6, .dots-7, .dots-8, .dots-9 {
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+        }
+        .dots-2 .dot:nth-child(1) { align-self: end; justify-self: start; }
+        .dots-2 .dot:nth-child(2) { align-self: start; justify-self: end; }
+        .dots-3 .dot:nth-child(1) { align-self: end; justify-self: start; }
+        .dots-3 .dot:nth-child(2) { align-self: center; justify-self: center; }
+        .dots-3 .dot:nth-child(3) { align-self: start; justify-self: end; }
+        .dots-4 .dot:nth-child(1) { align-self: end; justify-self: start; }
+        .dots-4 .dot:nth-child(2) { align-self: end; justify-self: end; }
+        .dots-4 .dot:nth-child(3) { align-self: start; justify-self: start; }
+        .dots-4 .dot:nth-child(4) { align-self: start; justify-self: end; }
+        .dots-5 .dot:nth-child(1) { align-self: end; justify-self: start; }
+        .dots-5 .dot:nth-child(2) { align-self: end; justify-self: end; }
+        .dots-5 .dot:nth-child(3) { align-self: center; justify-self: center; }
+        .dots-5 .dot:nth-child(4) { align-self: start; justify-self: start; }
+        .dots-5 .dot:nth-child(5) { align-self: start; justify-self: end; }
+        .dots-6 .dot:nth-child(1) { align-self: end; justify-self: start; }
+        .dots-6 .dot:nth-child(2) { align-self: end; justify-self: end; }
+        .dots-6 .dot:nth-child(3) { align-self: center; justify-self: start; }
+        .dots-6 .dot:nth-child(4) { align-self: center; justify-self: end; }
+        .dots-6 .dot:nth-child(5) { align-self: start; justify-self: start; }
+        .dots-6 .dot:nth-child(6) { align-self: start; justify-self: end; }
+        .dots-7 .dot:nth-child(1) { align-self: end; justify-self: start; }
+        .dots-7 .dot:nth-child(2) { align-self: end; justify-self: end; }
+        .dots-7 .dot:nth-child(3) { align-self: center; justify-self: start; }
+        .dots-7 .dot:nth-child(4) { align-self: center; justify-self: center; }
+        .dots-7 .dot:nth-child(5) { align-self: center; justify-self: end; }
+        .dots-7 .dot:nth-child(6) { align-self: start; justify-self: start; }
+        .dots-7 .dot:nth-child(7) { align-self: start; justify-self: end; }
+        .dots-8 .dot:nth-child(1) { align-self: end; justify-self: start; }
+        .dots-8 .dot:nth-child(2) { align-self: end; justify-self: end; }
+        .dots-8 .dot:nth-child(3) { align-self: center; justify-self: start; }
+        .dots-8 .dot:nth-child(4) { align-self: center; justify-self: end; }
+        .dots-8 .dot:nth-child(5) { align-self: start; justify-self: start; }
+        .dots-8 .dot:nth-child(6) { align-self: start; justify-self: end; }
+        .dots-8 .dot:nth-child(7) { align-self: end; justify-self: center; }
+        .dots-8 .dot:nth-child(8) { align-self: start; justify-self: center; }
+        .dots-9 .dot:nth-child(1) { align-self: end; justify-self: start; }
+        .dots-9 .dot:nth-child(2) { align-self: end; justify-self: center; }
+        .dots-9 .dot:nth-child(3) { align-self: end; justify-self: end; }
+        .dots-9 .dot:nth-child(4) { align-self: center; justify-self: start; }
+        .dots-9 .dot:nth-child(5) { align-self: center; justify-self: center; }
+        .dots-9 .dot:nth-child(6) { align-self: center; justify-self: end; }
+        .dots-9 .dot:nth-child(7) { align-self: start; justify-self: start; }
+        .dots-9 .dot:nth-child(8) { align-self: start; justify-self: center; }
+        .dots-9 .dot:nth-child(9) { align-self: start; justify-self: end; }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .player-setup-controls {
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 9999px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            flex: 1;
+        }
+
+        .btn-setup {
+            background-color: #4b5563;
+            color: #d1d5db;
+        }
+
+        .btn-setup.active {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .btn-restart, .btn-start {
+            background-color: #f97316;
+            color: white;
+        }
+        
+        .btn-restart:hover, .btn-start:hover {
+            background-color: #ea580c;
+            transform: translateY(-2px);
+        }
+
+        .btn-restart:active, .btn-start:active {
+            transform: translateY(0);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #374151;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-message {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .deck-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .deck-area-vertical {
+            min-height: 250px;
+        }
+        
+        .deck-area-horizontal {
+            min-width: 250px;
+        }
+        
+        .player-deck, .ai-deck {
+            display: flex;
+            position: relative;
+        }
+        
+        .card-in-hand, .card-back {
+            width: 70px;
+            height: 70px;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+        }
+        
+        /* Horizontal decks (top and bottom) */
+        .player-deck.horizontal, .ai-deck.horizontal {
+            flex-direction: row-reverse;
+        }
+        .player-deck.horizontal .card-in-hand, .ai-deck.horizontal .card-back {
+            margin-right: -50px;
+        }
+        .player-deck.horizontal .card-in-hand:last-child, .ai-deck.horizontal .card-back:last-child {
+            margin-right: 0;
+        }
+        .player-deck.horizontal .card-in-hand.next-card {
+            box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.4);
+            transform: translateX(10px);
+            z-index: 10;
+        }
+        
+        /* Vertical decks (left and right) */
+        .player-deck.vertical, .ai-deck.vertical {
+            flex-direction: column-reverse;
+        }
+        .player-deck.vertical .card-in-hand, .ai-deck.vertical .card-back {
+            margin-bottom: -50px;
+        }
+        .player-deck.vertical .card-in-hand:last-child, .ai-deck.vertical .card-back:last-child {
+            margin-bottom: 0;
+        }
+        .player-deck.vertical .card-in-hand.next-card {
+            box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.4);
+            transform: translateY(10px);
+            z-index: 10;
+        }
+        
+        .card-back {
+            background-color: var(--card-back-color);
+            transition: transform 0.2s ease;
+        }
+        
+        /* Spinner styles */
+        .spinner-modal-content {
+            background-color: #374151;
+            padding: 48px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .spinner {
+            width: 100px;
+            height: 100px;
+            border: 8px solid #f3f4f6;
+            border-top: 8px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        .spinner.final {
+            animation: none;
+            border-top-color: #f3f4f6;
+        }
+
+        .spinner-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                padding: 12px;
+                gap: 12px;
+            }
+            .title {
+                font-size: 2rem;
+            }
+            .message {
+                font-size: 1rem;
+            }
+            .game-layout {
+                flex-direction: column;
+                align-items: center;
+                gap: 5px;
+            }
+            .game-middle-row {
+                flex-direction: column;
+                justify-content: center;
+                gap: 12px;
+            }
+            .deck-area-horizontal, .deck-area-vertical {
+                 min-height: auto;
+                 min-width: auto;
+            }
+            .card-in-hand, .card-back {
+                width: 50px;
+                height: 50px;
+                margin: 0 !important;
+            }
+            .player-deck.horizontal .card-in-hand.next-card {
+                 transform: translateX(5px);
+            }
+            .player-deck.vertical .card-in-hand.next-card {
+                 transform: translateY(5px);
+            }
+            .grid-container {
+                gap: 2px;
+                padding: 2px;
+            }
+            .card {
+                font-size: 1rem;
+            }
+            .card-value-text {
+                font-size: 1.2rem;
+            }
+            .controls {
+                gap: 8px;
+            }
+            .btn {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Left-side control panel -->
+        <div class="game-controls">
+            <h1 class="title">Punto</h1>
+            <div class="controls">
+                <div class="player-setup-controls">
+                    <button class="btn btn-setup active" id="setup-2-players">2 Players</button>
+                    <button class="btn btn-setup" id="setup-4-players">4 Players</button>
+                </div>
+            </div>
+            <button class="btn btn-start" id="start-button">Start Game</button>
+            <button class="btn btn-restart" id="restart-button" style="display:none;">Restart Game</button>
+        </div>
+
+        <!-- Right-side game board -->
+        <div class="game-board-container" id="game-board-container">
+            <div class="message" id="game-message">Select your player count and click "Start Game"!</div>
+            <div class="game-layout">
+                <div id="deck-area-top" class="deck-area deck-area-horizontal"></div>
+                <div class="game-middle-row">
+                    <div id="deck-area-left" class="deck-area deck-area-vertical"></div>
+                    <div class="grid-container" id="grid"></div>
+                    <div id="deck-area-right" class="deck-area deck-area-vertical"></div>
+                </div>
+                <div id="deck-area-bottom" class="deck-area deck-area-horizontal"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals for game end and player selection -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-message" id="modal-message"></div>
+            <button class="btn btn-restart" id="modal-close-button">Play Again</button>
+        </div>
+    </div>
+
+    <div id="spinner-modal" class="modal">
+        <div class="spinner-modal-content">
+            <div class="spinner" id="spinner"></div>
+            <div class="spinner-text" id="spinner-text">Spinning to see who goes first...</div>
+        </div>
+    </div>
+
+    <script>
+        const GRID_SIZE = 9;
+        const CARD_VALUES = Array.from({ length: 9 }, (_, i) => i + 1);
+        const PLAYER_COLORS = {
+            'player1': 'player',
+            'ai1': 'ai',
+            'neutral': 'neutral',
+            'ai2': 'ai2',
+            'ai3': 'ai3'
+        };
+
+        let players = [];
+        let board = Array.from({ length: GRID_SIZE * GRID_SIZE }, () => null);
+        let turnCount = 0;
+        let gameOver = false;
+        let currentMode = 2;
+        let currentPlayerIndex = 0;
+
+        const gameBoardContainer = document.getElementById('game-board-container');
+        const gridElement = document.getElementById('grid');
+        const gameMessageElement = document.getElementById('game-message');
+        const deckAreaTop = document.getElementById('deck-area-top');
+        const deckAreaBottom = document.getElementById('deck-area-bottom');
+        const deckAreaLeft = document.getElementById('deck-area-left');
+        const deckAreaRight = document.getElementById('deck-area-right');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const modalElement = document.getElementById('modal');
+        const modalMessageElement = document.getElementById('modal-message');
+        const modalCloseButton = document.getElementById('modal-close-button');
+        const spinnerModal = document.getElementById('spinner-modal');
+        const spinnerElement = document.getElementById('spinner');
+        const spinnerText = document.getElementById('spinner-text');
+        const setup2PlayersBtn = document.getElementById('setup-2-players');
+        const setup4PlayersBtn = document.getElementById('setup-4-players');
+
+        function createDeck(cardSets) {
+            const deck = [];
+            for (let i = 0; i < cardSets; i++) {
+                deck.push(...CARD_VALUES);
+            }
+            return shuffle(deck);
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function renderCard(value, owner, parentElement) {
+            const card = document.createElement('div');
+            card.className = `card card-${PLAYER_COLORS[owner]}`;
+            card.setAttribute('data-value', value);
+            card.setAttribute('data-owner', owner);
+            
+            const dotsContainer = document.createElement('div');
+            dotsContainer.className = `card-dots dots-${value}`;
+            for (let i = 0; i < value; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                dotsContainer.appendChild(dot);
+            }
+            card.appendChild(dotsContainer);
+
+            const valueText = document.createElement('div');
+            valueText.className = 'card-value-text';
+            valueText.textContent = value;
+            card.appendChild(valueText);
+
+            parentElement.appendChild(card);
+        }
+
+        function renderDeck(player, container, orientation) {
+            const deckWrapper = document.createElement('div');
+            deckWrapper.className = `deck-area`;
+
+            const label = document.createElement('span');
+            label.className = player.isHuman ? 'player-label' : 'ai-label';
+            label.textContent = player.name;
+            deckWrapper.appendChild(label);
+            
+            const deckContainer = document.createElement('div');
+            deckContainer.className = (player.isHuman ? 'player-deck' : 'ai-deck') + ` ${orientation}`;
+
+            if (player.isHuman) {
+                player.deck.forEach((cardValue, index) => {
+                    const cardWrapper = document.createElement('div');
+                    cardWrapper.className = `card-in-hand`;
+                    if (index === player.deck.length - 1) {
+                         cardWrapper.classList.add('next-card');
+                    }
+                    renderCard(cardValue, player.id, cardWrapper);
+                    deckContainer.appendChild(cardWrapper);
+                });
+            } else {
+                for (let i = 0; i < player.deck.length; i++) {
+                    const cardBack = document.createElement('div');
+                    cardBack.className = 'card-back';
+                    deckContainer.appendChild(cardBack);
+                }
+            }
+            deckWrapper.appendChild(deckContainer);
+            container.appendChild(deckWrapper);
+        }
+
+        function updateUI() {
+            deckAreaTop.innerHTML = '';
+            deckAreaBottom.innerHTML = '';
+            deckAreaLeft.innerHTML = '';
+            deckAreaRight.innerHTML = '';
+
+            const humanPlayer = players.find(p => p.id === 'player1');
+            if (humanPlayer) {
+                renderDeck(humanPlayer, deckAreaBottom, 'horizontal');
+            }
+
+            if (currentMode === 2) {
+                const ai = players.find(p => p.id === 'ai1');
+                renderDeck(ai, deckAreaTop, 'horizontal');
+            } else if (currentMode === 4) {
+                renderDeck(players.find(p => p.id === 'ai1'), deckAreaTop, 'horizontal');
+                renderDeck(players.find(p => p.id === 'ai2'), deckAreaLeft, 'vertical');
+                renderDeck(players.find(p => p.id === 'ai3'), deckAreaRight, 'vertical');
+            }
+            
+            const currentPlayer = players[currentPlayerIndex];
+            if (currentPlayer.isHuman) {
+                gameMessageElement.textContent = `Your turn! Get ${getWinLength()} cards in a row.`;
+            } else {
+                gameMessageElement.textContent = `It's ${currentPlayer.name}'s turn...`;
+            }
+        }
+
+        function initializeGrid() {
+            gridElement.innerHTML = '';
+            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'card-slot';
+                slot.setAttribute('data-index', i);
+                slot.addEventListener('click', () => handlePlayerMove(i));
+                gridElement.appendChild(slot);
+            }
+        }
+
+        function getWinLength() {
+            return 5;
+        }
+
+        function startGame(playerCount) {
+            currentMode = playerCount;
+            players = [];
+            
+            if (playerCount === 2) {
+                players.push({ id: 'player1', name: 'You', deck: createDeck(2), isHuman: true, team: 'A' });
+                players.push({ id: 'ai1', name: 'AI', deck: createDeck(2), isHuman: false, team: 'B' });
+            } else if (playerCount === 4) {
+                players.push({ id: 'player1', name: 'You', deck: createDeck(1), isHuman: true, team: 'A' });
+                players.push({ id: 'ai1', name: 'AI 1', deck: createDeck(1), isHuman: false, team: 'B' });
+                players.push({ id: 'ai2', name: 'AI 2', deck: createDeck(1), isHuman: false, team: 'C' });
+                players.push({ id: 'ai3', name: 'AI 3', deck: createDeck(1), isHuman: false, team: 'D' });
+            }
+            
+            board = Array.from({ length: GRID_SIZE * GRID_SIZE }, () => null);
+            turnCount = 0;
+            gameOver = false;
+            
+            startButton.style.display = 'none';
+            restartButton.style.display = 'block';
+
+            initializeGrid();
+            updateUI();
+            determineFirstPlayer();
+            
+            setup2PlayersBtn.classList.remove('active');
+            setup4PlayersBtn.classList.remove('active');
+            if (playerCount === 2) {
+                setup2PlayersBtn.classList.add('active');
+            } else {
+                setup4PlayersBtn.classList.add('active');
+            }
+        }
+        
+        function determineFirstPlayer() {
+            spinnerModal.style.display = 'flex';
+            spinnerElement.classList.remove('final');
+            spinnerText.textContent = 'Spinning to see who goes first...';
+
+            // Simulate spinning
+            setTimeout(() => {
+                currentPlayerIndex = Math.floor(Math.random() * players.length);
+                const firstPlayer = players[currentPlayerIndex];
+                
+                spinnerElement.classList.add('final');
+                spinnerText.textContent = `${firstPlayer.name} goes first!`;
+
+                // Hide spinner and start the game after a short delay
+                setTimeout(() => {
+                    spinnerModal.style.display = 'none';
+                    nextTurn();
+                }, 1500);
+            }, 2000);
+        }
+
+        function isAdjacent(index) {
+            if (turnCount === 0) {
+                const centerIndex = Math.floor(GRID_SIZE * GRID_SIZE / 2);
+                return index === centerIndex;
+            }
+        
+            const row = Math.floor(index / GRID_SIZE);
+            const col = index % GRID_SIZE;
+        
+            for (let r = Math.max(0, row - 1); r <= Math.min(GRID_SIZE - 1, row + 1); r++) {
+                for (let c = Math.max(0, col - 1); c <= Math.min(GRID_SIZE - 1, col + 1); c++) {
+                    const adjacentIndex = r * GRID_SIZE + c;
+                    if (adjacentIndex !== index && board[adjacentIndex] !== null) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function canPlaceCard(index, cardValue, owner) {
+            if (board[index] === null) {
+                return isAdjacent(index);
+            } else {
+                const topCard = board[index];
+                if (PLAYER_COLORS[owner] === 'neutral') {
+                    return true;
+                }
+                return cardValue > topCard.value;
+            }
+        }
+        
+        function placeCard(index, cardValue, owner) {
+            const slot = gridElement.querySelector(`[data-index='${index}']`);
+            if (slot) {
+                const existingCard = slot.querySelector('.card');
+                if (existingCard) {
+                    existingCard.remove();
+                }
+                renderCard(cardValue, owner, slot);
+                slot.classList.add('occupied');
+                board[index] = { value: cardValue, owner: owner, color: PLAYER_COLORS[owner] };
+            }
+        }
+        
+        function checkWin(player, placedIndex) {
+            const winLength = getWinLength();
+            const ownerId = player.id;
+            
+            const directions = [
+                { dr: 0, dc: 1 },  // Horizontal
+                { dr: 1, dc: 0 },  // Vertical
+                { dr: 1, dc: 1 },  // Diagonal \
+                { dr: 1, dc: -1 }  // Diagonal /
+            ];
+
+            const placedRow = Math.floor(placedIndex / GRID_SIZE);
+            const placedCol = placedIndex % GRID_SIZE;
+            
+            for (const dir of directions) {
+                for (let i = 0; i < winLength; i++) {
+                    let count = 0;
+                    for (let j = 0; j < winLength; j++) {
+                        const r = placedRow + (j - i) * dir.dr;
+                        const c = placedCol + (j - i) * dir.dc;
+                        const index = r * GRID_SIZE + c;
+                        
+                        if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE && board[index]) {
+                            const card = board[index];
+                            if (card.owner === ownerId) {
+                                count++;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    if (count >= winLength) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function endGame(winnerName) {
+            gameOver = true;
+            showModal(`${winnerName} won!`);
+        }
+
+        function showModal(message) {
+            modalMessageElement.textContent = message;
+            modalElement.style.display = 'flex';
+        }
+
+        modalCloseButton.addEventListener('click', () => {
+            modalElement.style.display = 'none';
+        });
+
+        function handlePlayerMove(index) {
+            const currentPlayer = players[currentPlayerIndex];
+            if (gameOver || !currentPlayer.isHuman || currentPlayer.deck.length === 0) {
+                return;
+            }
+        
+            const cardValue = currentPlayer.deck[currentPlayer.deck.length - 1];
+            
+            if (canPlaceCard(index, cardValue, currentPlayer.id)) {
+                placeCard(index, currentPlayer.deck.pop(), currentPlayer.id);
+                updateUI();
+                turnCount++;
+        
+                if (checkWin(currentPlayer, index)) {
+                    endGame(currentPlayer.name);
+                    return;
+                }
+        
+                nextTurn();
+            } else {
+                gameMessageElement.textContent = "Invalid move! Try again.";
+            }
+        }
+        
+        function nextTurn() {
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            const currentPlayer = players[currentPlayerIndex];
+            if (currentPlayer.isHuman) {
+                updateUI();
+            } else {
+                updateUI();
+                setTimeout(aiMove, 1000);
+            }
+        }
+        
+        function aiMove() {
+            const currentPlayer = players[currentPlayerIndex];
+            if (gameOver || currentPlayer.deck.length === 0) {
+                nextTurn();
+                return;
+            }
+        
+            const cardValue = currentPlayer.deck[currentPlayer.deck.length - 1];
+            let bestMove = -1;
+            
+            const isFirstTurn = turnCount === 0;
+            const centerIndex = Math.floor(GRID_SIZE * GRID_SIZE / 2);
+            
+            if (isFirstTurn) {
+                bestMove = centerIndex;
+            } else {
+                const availableMoves = [];
+                for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+                    if (canPlaceCard(i, cardValue, currentPlayer.id)) {
+                        availableMoves.push(i);
+                    }
+                }
+                
+                // Prioritize moves that lead to a win
+                for (const moveIndex of availableMoves) {
+                    const originalCard = board[moveIndex];
+                    board[moveIndex] = { value: cardValue, owner: currentPlayer.id, color: PLAYER_COLORS[currentPlayer.id] };
+                    if (checkWin(currentPlayer, moveIndex)) {
+                        bestMove = moveIndex;
+                        board[moveIndex] = originalCard; // Reset board
+                        placeCard(bestMove, currentPlayer.deck.pop(), currentPlayer.id);
+                        if (checkWin(currentPlayer, bestMove)) {
+                            endGame(currentPlayer.name);
+                            return;
+                        }
+                        nextTurn();
+                        return;
+                    }
+                    board[moveIndex] = originalCard; // Reset board
+                }
+                
+                // Prioritize blocking other players
+                const opponentPlayers = players.filter(p => p.id !== currentPlayer.id);
+                for (const opponent of opponentPlayers) {
+                    for (const moveIndex of availableMoves) {
+                        if (checkWinForMove(opponent, moveIndex, cardValue)) {
+                            bestMove = moveIndex;
+                            placeCard(bestMove, currentPlayer.deck.pop(), currentPlayer.id);
+                            if (checkWin(currentPlayer, bestMove)) {
+                                endGame(currentPlayer.name);
+                                return;
+                            }
+                            nextTurn();
+                            return;
+                        }
+                    }
+                }
+                
+                // If no critical moves, make a random valid one
+                if (availableMoves.length > 0) {
+                    bestMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                } else {
+                    bestMove = -1;
+                }
+            }
+
+            if (bestMove !== -1) {
+                placeCard(bestMove, currentPlayer.deck.pop(), currentPlayer.id);
+                turnCount++;
+            }
+        
+            nextTurn();
+        }
+
+        function checkWinForMove(player, placedIndex, cardValue) {
+            const originalCard = board[placedIndex];
+            board[placedIndex] = { value: cardValue, owner: player.id, color: PLAYER_COLORS[player.id] };
+            const didWin = checkWin(player, placedIndex);
+            board[placedIndex] = originalCard;
+            return didWin;
+        }
+        
+        function resetGame() {
+            board = Array.from({ length: GRID_SIZE * GRID_SIZE }, () => null);
+            initializeGrid();
+            deckAreaTop.innerHTML = '';
+            deckAreaBottom.innerHTML = '';
+            deckAreaLeft.innerHTML = '';
+            deckAreaRight.innerHTML = '';
+        }
+
+        startButton.addEventListener('click', () => startGame(currentMode));
+        setup2PlayersBtn.addEventListener('click', () => {
+             currentMode = 2;
+             setup2PlayersBtn.classList.add('active');
+             setup4PlayersBtn.classList.remove('active');
+             resetGame();
+        });
+        setup4PlayersBtn.addEventListener('click', () => {
+             currentMode = 4;
+             setup4PlayersBtn.classList.add('active');
+             setup2PlayersBtn.classList.remove('active');
+             resetGame();
+        });
+        restartButton.addEventListener('click', () => startGame(currentMode));
+        
+        // Initial setup on page load
+        initializeGrid();
+    </script>
+</body>
+</html>
