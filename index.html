@@ -399,18 +399,17 @@
         
         .card-back { background-color: var(--card-back-color); transition: transform 0.2s ease; }
 
-        .card-player {
-            background: linear-gradient(135deg, #3b82f6 60%, #2563eb 100%);
-        }
-        .card-ai {
-            background: linear-gradient(135deg, #ef4444 60%, #b91c1c 100%);
-        }
-        .card-ai2 {
-            background: linear-gradient(135deg, #10b981 60%, #047857 100%);
-        }
-        .card-ai3 {
-            background: linear-gradient(135deg, #6366f1 60%, #3730a3 100%);
-        }
+        /* --- Player/AI card colors are now owner-based for 4 player mode */
+        .card-player1 { background: linear-gradient(135deg, #3b82f6 60%, #2563eb 100%); }
+        .card-ai1 { background: linear-gradient(135deg, #ef4444 60%, #b91c1c 100%); }
+        .card-ai2 { background: linear-gradient(135deg, #10b981 60%, #047857 100%); }
+        .card-ai3 { background: linear-gradient(135deg, #6366f1 60%, #3730a3 100%); }
+        
+        /* NEW: Custom colors for 2-player mode cards */
+        .card-color-blue { background: linear-gradient(135deg, #3b82f6 60%, #2563eb 100%); }
+        .card-color-green { background: linear-gradient(135deg, #10b981 60%, #047857 100%); }
+        .card-color-red { background: linear-gradient(135deg, #ef4444 60%, #b91c1c 100%); }
+        .card-color-yellow { background: linear-gradient(135deg, #f59e0b 60%, #d97706 100%); }
     </style>
 </head>
 <body>
@@ -452,13 +451,13 @@
 
     <script>
         // --- CONFIGURATION ---
-        const GRID_SIZE = 9; // CHANGED: 9x9 grid
-        const AI_THINKING_TIME = 750; // In milliseconds
+        const GRID_SIZE = 9;
+        const AI_THINKING_TIME = 750;
         const CARD_VALUES = Array.from({ length: 9 }, (_, i) => i + 1);
         const PLAYER_COLORS = {
-            'player1': 'player', 'ai1': 'ai', 'ai2': 'ai2', 'ai3': 'ai3'
+            'player1': 'player1', 'ai1': 'ai1', 'ai2': 'ai2', 'ai3': 'ai3'
         };
-        const CENTER_INDEX = 4 * GRID_SIZE + 4; // CHANGED: Center of 9x9 grid (row 4, col 4, 0-based)
+        const CENTER_INDEX = 4 * GRID_SIZE + 4;
 
         // --- GAME STATE ---
         let players = [];
@@ -510,13 +509,14 @@
             
             players = [];
             if (playerCount === 2) {
-                players.push({ id: 'player1', name: 'You', deck: createDeck(2), isHuman: true });
-                players.push({ id: 'ai1', name: 'AI', deck: createDeck(2), isHuman: false });
+                // NEW RULE: 2-player mode uses two card colors per player
+                players.push({ id: 'player1', name: 'You', deck: createColoredDeck(['blue', 'green']), isHuman: true });
+                players.push({ id: 'ai1', name: 'AI', deck: createColoredDeck(['red', 'yellow']), isHuman: false });
             } else if (playerCount === 4) {
-                players.push({ id: 'player1', name: 'You', deck: createDeck(1), isHuman: true });
-                players.push({ id: 'ai1', name: 'AI 1', deck: createDeck(1), isHuman: false });
-                players.push({ id: 'ai2', name: 'AI 2', deck: createDeck(1), isHuman: false });
-                players.push({ id: 'ai3', name: 'AI 3', deck: createDeck(1), isHuman: false });
+                players.push({ id: 'player1', name: 'You', deck: createSimpleDeck('player1'), isHuman: true });
+                players.push({ id: 'ai1', name: 'AI 1', deck: createSimpleDeck('ai1'), isHuman: false });
+                players.push({ id: 'ai2', name: 'AI 2', deck: createSimpleDeck('ai2'), isHuman: false });
+                players.push({ id: 'ai3', name: 'AI 3', deck: createSimpleDeck('ai3'), isHuman: false });
             }
             
             currentPlayerIndex = Math.floor(Math.random() * players.length);
@@ -531,9 +531,8 @@
         }
         
         function nextTurn() {
-            // RULE CHANGE: Check for draw condition
             if (players.every(p => p.deck.length === 0) && !gameOver) {
-                endGame(null, true); // Pass true for a draw
+                endGame(null, true);
                 return;
             }
             
@@ -543,7 +542,7 @@
             const currentPlayer = players[currentPlayerIndex];
 
             if(currentPlayer.deck.length === 0) {
-                 nextTurn(); // Skip players with no cards
+                 nextTurn();
                  return;
             }
             
@@ -561,8 +560,9 @@
             const currentPlayer = players[currentPlayerIndex];
             if (gameOver || !currentPlayer.isHuman || currentPlayer.deck.length === 0) return;
         
-            const cardValue = currentPlayer.deck[currentPlayer.deck.length - 1];
-            if (canPlaceCard(index, cardValue)) {
+            const cardToPlay = currentPlayer.deck[currentPlayer.deck.length - 1];
+            
+            if (canPlaceCard(index, cardToPlay.value)) {
                 placeCard(index, currentPlayer.deck.pop(), currentPlayer.id);
                 turnCount++;
         
@@ -578,15 +578,15 @@
             }
         }
 
-        function placeCard(index, cardValue, ownerId) {
-            board[index] = { value: cardValue, owner: ownerId };
-            // UI update happens in updateUI()
+        function placeCard(index, card, ownerId) {
+            // NEW: The card object now contains a value and a color.
+            board[index] = { value: card.value, owner: ownerId, color: card.color };
         }
         
         function endGame(winner, isDraw = false, winningLine = []) {
             gameOver = true;
             updateValidMoveHighlights(false);
-            updateUI(winningLine); // Redraw UI to show winning line
+            updateUI(winningLine);
 
             let message;
             if (isDraw) {
@@ -603,12 +603,11 @@
 
         // --- RULE CHECKING ---
         function getWinLength() {
-            // RULE CHANGE: Win length depends on player count
             return currentMode === 2 ? 5 : 4;
         }
         
         function isAdjacent(index) {
-            if (turnCount === 0) return index === CENTER_INDEX; // Only center allowed for first move
+            if (turnCount === 0) return index === CENTER_INDEX;
 
             const row = Math.floor(index / GRID_SIZE);
             const col = index % GRID_SIZE;
@@ -634,7 +633,7 @@
             }
         }
 
-        // LOGIC IMPROVEMENT: More efficient win check
+        // UPDATED: Check for win based on owner and card color for 2-player mode.
         function checkWin(placedIndex) {
             const placedCard = board[placedIndex];
             if (!placedCard) return null;
@@ -652,7 +651,12 @@
                     const r = r_start + i * dir.dr;
                     const c = c_start + i * dir.dc;
                     const idx = r * GRID_SIZE + c;
-                    if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE && board[idx]?.owner === ownerId) {
+                    
+                    if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE && board[idx] && board[idx].owner === ownerId) {
+                         // NEW: Check for same card color in 2-player mode.
+                        if (currentMode === 2 && board[idx].color !== placedCard.color) {
+                            break;
+                        }
                         line.push(idx);
                     } else {
                         break;
@@ -663,7 +667,12 @@
                     const r = r_start - i * dir.dr;
                     const c = c_start - i * dir.dc;
                     const idx = r * GRID_SIZE + c;
-                    if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE && board[idx]?.owner === ownerId) {
+                    
+                    if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE && board[idx] && board[idx].owner === ownerId) {
+                        // NEW: Check for same card color in 2-player mode.
+                        if (currentMode === 2 && board[idx].color !== placedCard.color) {
+                            break;
+                        }
                         line.push(idx);
                     } else {
                         break;
@@ -677,14 +686,27 @@
         }
 
         // --- DECK MANAGEMENT ---
-        function createDeck(cardSets) {
+        // NEW: Creates a deck with two colors for a player
+        function createColoredDeck(colors) {
             const deck = [];
-            for (let i = 0; i < cardSets; i++) {
-                deck.push(...CARD_VALUES);
-            }
+            colors.forEach(color => {
+                for (let i = 1; i <= 9; i++) {
+                    deck.push({ value: i, color: color });
+                }
+            });
             return shuffle(deck);
         }
-
+        
+        // OLD: Keeps this for the 4-player mode
+        function createSimpleDeck(ownerId) {
+            const deck = [];
+            for (let i = 0; i < 1; i++) { // One set of cards per player
+                deck.push(...CARD_VALUES);
+            }
+            // MODIFIED: Return objects with a value and a color based on the owner
+            return shuffle(deck.map(v => ({ value: v, color: PLAYER_COLORS[ownerId] })));
+        }
+        
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -714,7 +736,7 @@
                 
                 const cardData = board[i];
                 if (cardData) {
-                    renderCard(cardData.value, cardData.owner, slot);
+                    renderCard(cardData.value, cardData.owner, cardData.color, slot);
                     slot.classList.add('occupied');
                     if (winningLine.includes(i)) {
                         slot.firstChild.classList.add('winning-card');
@@ -743,9 +765,11 @@
             }
         }
 
-        function renderCard(value, owner, parentElement) {
+        // UPDATED: Render card based on its color, not just owner
+        function renderCard(value, owner, color, parentElement) {
             const card = document.createElement('div');
-            card.className = `card card-${PLAYER_COLORS[owner]}`;
+            // MODIFIED: Use the specific color if available, otherwise fall back to owner ID
+            card.className = `card card-${color}`;
             
             const dotsContainer = document.createElement('div');
             dotsContainer.className = `card-dots dots-${value}`;
@@ -758,6 +782,7 @@
             parentElement.appendChild(card);
         }
 
+        // UPDATED: Render cards with correct colors for 2-player mode
         function renderDeck(player, container, orientation) {
             const deckWrapper = document.createElement('div');
             deckWrapper.className = `deck-area`;
@@ -768,14 +793,17 @@
             
             const deckContainer = document.createElement('div');
             deckContainer.className = (player.isHuman ? 'player-deck' : 'ai-deck') + ` ${orientation}`;
-
-            const displayDeck = player.isHuman ? player.deck : Array(player.deck.length).fill(0);
-            displayDeck.forEach((cardValue, index) => {
+            
+            const displayDeck = player.isHuman ? player.deck : Array(player.deck.length).fill(null);
+            
+            displayDeck.forEach((cardData, index) => {
                 const cardWrapper = document.createElement('div');
                 if (player.isHuman) {
                     cardWrapper.className = `card-in-hand`;
                     if (index === displayDeck.length - 1) cardWrapper.classList.add('next-card');
-                    renderCard(cardValue, player.id, cardWrapper);
+                    
+                    // Render the card with its specific color
+                    renderCard(cardData.value, player.id, cardData.color, cardWrapper);
                 } else {
                     cardWrapper.className = 'card-back';
                 }
@@ -791,17 +819,16 @@
             const player = players[currentPlayerIndex];
             if (!player || player.deck.length === 0) return;
 
-            const cardValue = player.deck[player.deck.length - 1];
+            const cardToPlay = player.deck[player.deck.length - 1];
             for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
                 const slot = gridElement.children[i];
-                // Only highlight center cell for first move
                 if (show && turnCount === 0) {
                     if (i === CENTER_INDEX) {
                         slot.classList.add('valid-move-indicator');
                     } else {
                         slot.classList.remove('valid-move-indicator');
                     }
-                } else if (show && canPlaceCard(i, cardValue)) {
+                } else if (show && canPlaceCard(i, cardToPlay.value)) {
                     slot.classList.add('valid-move-indicator');
                 } else {
                     slot.classList.remove('valid-move-indicator');
@@ -810,17 +837,16 @@
         }
 
         // --- AI LOGIC ---
-        // AI IMPROVEMENT: Smarter "Greedy" AI
         function aiMove() {
             const currentPlayer = players[currentPlayerIndex];
             if (gameOver || currentPlayer.deck.length === 0) return;
 
-            const cardValue = currentPlayer.deck[currentPlayer.deck.length - 1];
+            const cardToPlay = currentPlayer.deck[currentPlayer.deck.length - 1];
             let bestMove = { index: -1, score: -Infinity };
             const validMoves = [];
 
             for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
-                if (canPlaceCard(i, cardValue)) {
+                if (canPlaceCard(i, cardToPlay.value)) {
                     validMoves.push(i);
                 }
             }
@@ -831,7 +857,7 @@
             }
 
             for (const index of validMoves) {
-                const score = scoreMove(index, currentPlayer, cardValue);
+                const score = scoreMove(index, currentPlayer, cardToPlay);
                 if (score > bestMove.score) {
                     bestMove = { index, score };
                 }
@@ -853,52 +879,47 @@
             nextTurn();
         }
 
-        function scoreMove(index, player, cardValue) {
+        function scoreMove(index, player, cardToPlay) {
             let score = 0;
             const opponents = players.filter(p => p.id !== player.id);
 
-            // Temporarily make the move to evaluate
             const originalCell = board[index];
-            board[index] = { value: cardValue, owner: player.id };
+            board[index] = { value: cardToPlay.value, owner: player.id, color: cardToPlay.color };
 
-            // 1. HUGE SCORE for a winning move
             if (checkWin(index)?.owner === player.id) {
-                board[index] = originalCell; // backtrack
+                board[index] = originalCell;
                 return 10000;
             }
 
-            // 2. BIG SCORE for blocking an opponent's win
             for(const op of opponents) {
                 if(op.deck.length > 0) {
-                    const opponentCardValue = op.deck[op.deck.length - 1];
-                    // If opponent could win here next turn, this is a crucial block
-                    board[index] = { value: opponentCardValue, owner: op.id };
+                    const opponentCardToPlay = op.deck[op.deck.length - 1];
+                    board[index] = { value: opponentCardToPlay.value, owner: op.id, color: opponentCardToPlay.color };
                     if (checkWin(index)?.owner === op.id) {
                         score += 5000;
                     }
-                    board[index] = { value: cardValue, owner: player.id }; // revert to our move
+                    board[index] = { value: cardToPlay.value, owner: player.id, color: cardToPlay.color };
                 }
             }
             
-            // 3. Score for extending our own lines
-            score += Math.pow(getLineLength(index, player.id), 2) * 10;
+            // MODIFIED: Pass cardToPlay.color to getLineLength for accurate scoring in 2-player mode
+            score += Math.pow(getLineLength(index, player.id, cardToPlay.color), 2) * 10;
             
-            // 4. Score for blocking opponent's lines
             for(const op of opponents) {
-                score += getLineLength(index, op.id) * 5;
+                if (board[index] && board[index].owner !== op.id) {
+                    score += getLineLength(index, op.id, board[index].color) * 5;
+                }
             }
-
-            // 5. Bonus for taking over a high-value central spot or opponent's card
+            
             if (originalCell !== null) {
                 score += originalCell.value * 2;
             }
 
-            // Backtrack the temporary move
             board[index] = originalCell;
             return score;
         }
 
-        function getLineLength(index, ownerId) {
+        function getLineLength(index, ownerId, color) {
             let maxLen = 0;
             const r_start = Math.floor(index / GRID_SIZE);
             const c_start = index % GRID_SIZE;
@@ -908,12 +929,18 @@
                 let currentLen = 1;
                 for(let i = 1; i < getWinLength(); i++) {
                     const r = r_start + i * dir.dr, c = c_start + i * dir.dc;
-                    if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE || board[r * GRID_SIZE + c]?.owner !== ownerId) break;
+                    const cardAtIdx = board[r * GRID_SIZE + c];
+                    if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE || cardAtIdx?.owner !== ownerId) break;
+                    // MODIFIED: Only check for color match in 2-player mode
+                    if (currentMode === 2 && cardAtIdx?.color !== color) break;
                     currentLen++;
                 }
                 for(let i = 1; i < getWinLength(); i++) {
                     const r = r_start - i * dir.dr, c = c_start - i * dir.dc;
-                    if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE || board[r * GRID_SIZE + c]?.owner !== ownerId) break;
+                    const cardAtIdx = board[r * GRID_SIZE + c];
+                    if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE || cardAtIdx?.owner !== ownerId) break;
+                    // MODIFIED: Only check for color match in 2-player mode
+                    if (currentMode === 2 && cardAtIdx?.color !== color) break;
                     currentLen++;
                 }
                 if (currentLen > maxLen) maxLen = currentLen;
